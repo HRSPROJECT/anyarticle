@@ -10,6 +10,7 @@
             margin: 0;
             padding: 0;
             background-color: #f9f9f9;
+            overflow-x: hidden;
         }
         .search-bar {
             position: fixed;
@@ -82,9 +83,45 @@
         .article-content b {
             color: #333;
         }
+        /* Loading circle styles */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            display: none;
+        }
+        .loading.visible {
+            display: flex;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(0, 0, 0, 0.2);
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 <body>
+    <div class="loading" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
     <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Type to search..." autofocus>
     </div>
@@ -100,22 +137,38 @@
     <script>
         async function queryAI(prompt) {
             const url = 'https://api.hyperbolic.xyz/v1/chat/completions';
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJoYXJzaGVldGd1bmRlY2hhOTg0QGdtYWlsLmNvbSIsImlhdCI6MTczMjQyMDU2OH0.nvFjZsVEC-GuusTOAcBsRnUyTzSvI5qxNYS9_KYBg7s',
-                },
-                body: JSON.stringify({
-                    model: 'meta-llama/Llama-3.2-3B-Instruct',
-                    messages: [{ role: 'user', content: prompt }],
-                    max_tokens: 1024,
-                    temperature: 0.7,
-                }),
-            });
+            try {
+                showLoading();
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJoYXJzaGVldGd1bmRlY2hhOTg0QGdtYWlsLmNvbSIsImlhdCI6MTczMjQyMDU2OH0.nvFjZsVEC-GuusTOAcBsRnUyTzSvI5qxNYS9_KYBg7s',
+                    },
+                    body: JSON.stringify({
+                        model: 'meta-llama/Llama-3.2-3B-Instruct',
+                        messages: [{ role: 'user', content: prompt }],
+                        max_tokens: 1024,
+                        temperature: 0.7,
+                    }),
+                });
 
-            const data = await response.json();
-            return data.choices[0]?.message?.content || 'No response from AI.';
+                const data = await response.json();
+                return data.choices[0]?.message?.content || 'No response from AI.';
+            } catch (error) {
+                console.error('Error querying AI:', error);
+                return 'Error fetching data.';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.add('visible');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.remove('visible');
         }
 
         const searchInput = document.getElementById('searchInput');
@@ -153,8 +206,8 @@
                 const articleResponse = await queryAI(prompt);
 
                 articleContent.innerHTML = articleResponse
-                    .replace(/(?<!\*)\*\*(.*?)\*\*/g, '<b>$1</b>') 
-                    .replace(/\n\s*\n/g, '<br><br>'); 
+                    .replace(/(?<!\*)\*\*(.*?)\*\*/g, '<b>$1</b>')
+                    .replace(/\n\s*\n/g, '<br><br>');
 
                 articleContainer.style.display = 'flex';
                 titleContainer.classList.remove('visible');
