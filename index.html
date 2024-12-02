@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced AI Article Viewer</title>
+    <title>AI Articles</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -29,7 +29,7 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
-        .container {
+        .container, .article-container {
             width: 100%;
             max-width: 800px;
             margin: 80px auto;
@@ -46,11 +46,6 @@
         h1, h2 {
             color: #333;
         }
-        .titles {
-            list-style: none;
-            padding: 0;
-            margin: 20px 0;
-        }
         .titles li {
             background: #f0f0f0;
             padding: 10px;
@@ -62,66 +57,49 @@
         .titles li:hover {
             background: #e0e0e0;
         }
-        .article-container {
-            display: none;
-            flex-direction: column;
-            padding: 20px;
-            margin: 80px auto;
-            max-width: 800px;
-        }
-        .article-title {
-            font-size: 28px;
-            margin-bottom: 20px;
-            color: #444;
-        }
-        .article-content {
-            font-size: 18px;
-            line-height: 1.8;
-            color: #555;
-            white-space: pre-wrap;
-        }
-        .article-content b {
-            color: #333;
-        }
-        /* Loading circle styles */
         .loading {
+            display: none;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            right: 0;
             background: rgba(255, 255, 255, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
             z-index: 2000;
-            display: none;
         }
         .loading.visible {
             display: flex;
         }
         .spinner {
-            width: 50px;
-            height: 50px;
             border: 5px solid rgba(0, 0, 0, 0.2);
             border-top: 5px solid #3498db;
             border-radius: 50%;
+            width: 50px;
+            height: 50px;
             animation: spin 1s linear infinite;
         }
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-            100% {
-                transform: rotate(360deg);
-            }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .article-image {
+            max-width: 100%;
+            width: 300px; /* Smaller image size */
+            margin: 0 auto 20px;
+            border-radius: 10px;
+            display: block;
+        }
+        .article-content p {
+            margin: 10px 0;
+        }
+        .article-content b {
+            color: #333;
+            background-color: yellow; /* Highlight color */
+            padding: 2px 4px;
+            border-radius: 3px;
         }
     </style>
 </head>
 <body>
-    <div class="loading" id="loadingOverlay">
-        <div class="spinner"></div>
-    </div>
     <div class="search-bar">
         <input type="text" id="searchInput" placeholder="Type to search..." autofocus>
     </div>
@@ -130,15 +108,19 @@
         <ul class="titles" id="titlesList"></ul>
     </div>
     <div class="article-container" id="articleContainer">
+        <img class="article-image" id="articleImage" alt="Generated Image">
         <h2 class="article-title" id="articleTitle"></h2>
         <div class="article-content" id="articleContent"></div>
+    </div>
+    <div class="loading" id="loadingOverlay">
+        <div class="spinner"></div>
     </div>
 
     <script>
         async function queryAI(prompt) {
-            const url = 'https://api.hyperbolic.xyz/v1/chat/completions';
+            const url = 'https://api.hyperbolic.xyz/v1/chat/completions';  // Text API endpoint
+            showLoading();
             try {
-                showLoading();
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {
@@ -152,12 +134,33 @@
                         temperature: 0.7,
                     }),
                 });
-
                 const data = await response.json();
                 return data.choices[0]?.message?.content || 'No response from AI.';
             } catch (error) {
                 console.error('Error querying AI:', error);
                 return 'Error fetching data.';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function queryImage(prompt) {
+            const imageUrl = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-3.5-large';
+            showLoading();
+            try {
+                const response = await fetch(imageUrl, {
+                    method: 'POST',
+                    headers: {
+                        Authorization: 'Bearer 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',
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ inputs: prompt }),
+                });
+                const blob = await response.blob();
+                return URL.createObjectURL(blob);
+            } catch (error) {
+                console.error('Error fetching image:', error);
+                return '';
             } finally {
                 hideLoading();
             }
@@ -171,30 +174,29 @@
             document.getElementById('loadingOverlay').classList.remove('visible');
         }
 
+        function formatText(content) {
+            // Apply bolding and highlighting rules
+            return content.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+                          .replace(/\n\n/g, '</p><p>')
+                          .replace(/\n/g, '<br>');
+        }
+
         const searchInput = document.getElementById('searchInput');
-        const titleContainer = document.getElementById('titleContainer');
         const titlesList = document.getElementById('titlesList');
+        const titleContainer = document.getElementById('titleContainer');
         const articleContainer = document.getElementById('articleContainer');
+        const articleImage = document.getElementById('articleImage');
         const articleTitle = document.getElementById('articleTitle');
         const articleContent = document.getElementById('articleContent');
 
-        let typingTimeout;
-
-        searchInput.addEventListener('input', () => {
+        searchInput.addEventListener('input', async () => {
             const query = searchInput.value.trim();
             if (query.length > 0) {
                 titleContainer.classList.add('visible');
-                articleContainer.style.display = 'none';
-                clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(async () => {
-                    const prompt = `MAKE MULTIPLE TITLE FOR THIS TOPIC "${query}", AND NOTHING ELSE.`;
-                    const titlesResponse = await queryAI(prompt);
-                    const titles = titlesResponse.split('\n').filter(line => line.trim());
-                    titlesList.innerHTML = titles.map(title => `<li>${title}</li>`).join('');
-                }, 300);
-            } else {
-                titleContainer.classList.remove('visible');
-                titlesList.innerHTML = '';
+                const prompt = `Create multiple engaging titles for "${query}",nothing else,only titles.`;
+                const titlesResponse = await queryAI(prompt);
+                const titles = titlesResponse.split('\n').filter(line => line.trim());
+                titlesList.innerHTML = titles.map(title => `<li>${title}</li>`).join('');
             }
         });
 
@@ -202,23 +204,19 @@
             if (e.target.tagName === 'LI') {
                 const selectedTitle = e.target.textContent.trim();
                 articleTitle.textContent = selectedTitle;
-                const prompt = `MAKE A FULL DETAILED ADDITIVE ARTICLE ON "${selectedTitle}".`;
-                const articleResponse = await queryAI(prompt);
 
-                articleContent.innerHTML = articleResponse
-                    .replace(/(?<!\*)\*\*(.*?)\*\*/g, '<b>$1</b>')
-                    .replace(/\n\s*\n/g, '<br><br>');
+                showLoading();
+                const imagePrompt = `Generate an image representing "${selectedTitle}"`;
+                const imageSrc = await queryImage(imagePrompt);
+                articleImage.src = imageSrc;
+
+                const articlePrompt = `Create a detailed, readable article on "${selectedTitle}"`;
+                const articleResponse = await queryAI(articlePrompt);
+                articleContent.innerHTML = '<p>' + formatText(articleResponse) + '</p>';
 
                 articleContainer.style.display = 'flex';
                 titleContainer.classList.remove('visible');
-            }
-        });
-
-        searchInput.addEventListener('focus', () => {
-            const query = searchInput.value.trim();
-            if (query.length > 0) {
-                titleContainer.classList.add('visible');
-                articleContainer.style.display = 'none';
+                hideLoading();
             }
         });
     </script>
