@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Article </title>
+    <title>AI Article Viewer with Highlights and Small Images</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -66,7 +66,7 @@
             top: 0;
             left: 0;
             right: 0;
-            background: rgba(255, 255, 255, 0.8);
+            
             z-index: 2000;
         }
         .loading.visible {
@@ -206,7 +206,7 @@
                 articleTitle.textContent = selectedTitle;
 
                 showLoading();
-                const imagePrompt = `Generate an image representing "${selectedTitle}",realstic and show no face only texts,there should be no person face there should only be objects and texts`;
+                const imagePrompt = `Generate an image representing "${selectedTitle}",realstic and show no face only texts,there should be no person face there should only be objects and texts,make it super acuruate according to prompt`;
                 const imageSrc = await queryImage(imagePrompt);
                 articleImage.src = imageSrc;
 
