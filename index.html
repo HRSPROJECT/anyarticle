@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Articles</title>
+    <title>AI Article </title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -104,7 +104,7 @@
         <input type="text" id="searchInput" placeholder="Type to search..." autofocus>
     </div>
     <div class="container" id="titleContainer">
-        <h1>Search Results</h1>
+        <h1>Search Results(*all is ai generated*)</h1>
         <ul class="titles" id="titlesList"></ul>
     </div>
     <div class="article-container" id="articleContainer">
@@ -145,7 +145,7 @@
         }
 
         async function queryImage(prompt) {
-            const imageUrl = 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-3.5-large';
+            const imageUrl = 'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell';
             showLoading();
             try {
                 const response = await fetch(imageUrl, {
@@ -193,7 +193,7 @@
             const query = searchInput.value.trim();
             if (query.length > 0) {
                 titleContainer.classList.add('visible');
-                const prompt = `Create multiple engaging titles for "${query}",nothing else,only titles.`;
+                const prompt = `Create multiple engaging titles for "${query}",make titles similar to "${query}",and top title should be "${query}" ,nothing else,only titles.`;
                 const titlesResponse = await queryAI(prompt);
                 const titles = titlesResponse.split('\n').filter(line => line.trim());
                 titlesList.innerHTML = titles.map(title => `<li>${title}</li>`).join('');
@@ -206,11 +206,11 @@
                 articleTitle.textContent = selectedTitle;
 
                 showLoading();
-                const imagePrompt = `Generate an image representing "${selectedTitle}"`;
+                const imagePrompt = `Generate an image representing "${selectedTitle}",realstic and show no face only texts,there should be no person face there should only be objects and texts`;
                 const imageSrc = await queryImage(imagePrompt);
                 articleImage.src = imageSrc;
 
-                const articlePrompt = `Create a detailed, readable article on "${selectedTitle}"`;
+                const articlePrompt = `Create a detailed,very much adictive, readable article on "${selectedTitle}"`;
                 const articleResponse = await queryAI(articlePrompt);
                 articleContent.innerHTML = '<p>' + formatText(articleResponse) + '</p>';
 
